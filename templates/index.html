@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>IHK Project - Schiffe versenken</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        /*Ниже мы делаем сетку 10 на 10 и отступами клеточек друг от друга 2*/
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(10,40px);
+            grid-template-rows: repeat(10,40px);
+            gap: 2px;
+
+        }
+        /*Добавляю стиль клеточки*/
+        .cell{
+            width: 40px;
+            height: 40px;
+            background-color: #ADD8E6 /*#e0f7fa*/;
+            border: 1px solid #b2ebf2; /*тонкая рамка вокруг клетки */
+            cursor: pointer; /*курсор превращается в палец при наведении */
+        }
+        .cell.miss
+        {
+            background-color: #b0bec5;
+            cursor: not-allowed;
+        }
+        .cell.hit
+        {
+            background-color: #ef5350;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Schiffe versenken - Testumgebung</h1>
+    <p>Нажми на кнопку, чтобы симулировать выстрел по сети:</p>
+    <div id="board" class="grid"></div>
+
+
+    <script>
+        // Инициализируем сетевое соединение с сервером
+        const socket = io();
+        const board = document.getElementById("board");
+        for(let y=0; y<10;y++)
+        {
+            for(let x=0; x<10;x++)
+            {
+                const cell=document.createElement("div");
+                cell.className= "cell";
+                cell.innerText=`${x},${y}`;
+                cell.id = `cell-${x}-${y}`;
+                cell.addEventListener("click",()=>{
+                    sendShot(x,y);
+                })
+                board.appendChild(cell);
+            }
+        }
+        function sendShot(x,y)
+        {
+            console.log(`Кликнули по клетке: X=${x},Y=${y}`);
+            socket.emit("fire_shot",{x:x,y:y});
+        }
+        socket.on("shot_response",(data)=>{
+            const cellId = `cell-${data.x}-${data.y}`;
+            const cell= document.getElementById(cellId)
+            if(cell)
+            {
+                cell.classList.add(data.status);
+            }
+        });
+
+    </script>
+</body>
+</html>
