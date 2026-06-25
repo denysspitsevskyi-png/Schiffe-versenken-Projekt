@@ -5,6 +5,23 @@
     <title>IHK Project - Schiffe versenken</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
+        .game-container
+        {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-top: 20px;
+        }
+        .board-wrapper
+        {
+            text-align: center;
+        }
+        .board-wrapper h2
+        {
+            font-family: sans-serif;
+            color: #333;
+            margin-bottom: 10px;
+        }
         /*Ниже мы делаем сетку 10 на 10 и отступами клеточек друг от друга 2*/
         .grid {
             display: grid;
@@ -36,38 +53,72 @@
 <body>
     <h1>Schiffe versenken - Testumgebung</h1>
     <p>Нажми на кнопку, чтобы симулировать выстрел по сети:</p>
-    <div id="board" class="grid"></div>
+    <div class="game-container">
+        <div class="board-wrapper">
+            <h2>Мое поле</h2>
+            <div id="my-board" class="grid"></div>
+        </div>
+
+        <div  class="board-wrapper">
+            <h2>Поле противника</h2>
+            <div id="enemy-board" class="grid">
+        </div>
+    </div>
+
 
 
     <script>
         // Инициализируем сетевое соединение с сервером
         const socket = io();
-        const board = document.getElementById("board");
-        for(let y=0; y<10;y++)
+        // Функция, которая умеет строить сетку внутри любого контейнера
+    // boardId — это ID ящика ("my-board" или "enemy-board")
+    // isEnemy — true (если это поле врага, по которому можно кликать) или false
+        function createBoard(boardId,isEnemy)
         {
-            for(let x=0; x<10;x++)
+            const board = document.getElementById(boardId);
+            for(let y = 0; y <10 ; y++)
             {
-                const cell=document.createElement("div");
-                cell.className= "cell";
-                cell.innerText=`${x},${y}`;
-                cell.id = `cell-${x}-${y}`;
-                cell.addEventListener("click",()=>{
-                    sendShot(x,y);
-                })
-                board.appendChild(cell);
+                for(let x = 0; x < 10 ; x++)
+                {
+                    const cell = document.createElement("div");
+                    cell.className="cell"
+                    // Чтобы ID клеток не пересекались, добавим приставку поля:
+                    // Например: "my-cell-5-3" или "enemy-cell-5-3"
+                    cell.id = `${boardId}-cell-${x}-${y}`;
+                    cell.innerText = `${x},${y}`;
+                    // Кликать разрешаем ТОЛЬКО на поле врага!
+                    if(isEnemy)
+                    {
+                        cell.addEventListener("click", () => {
+                            sendShot(x,y)
+                        });
+                    }
+                    board.appendChild(cell);
+                }
             }
         }
+        createBoard("my-board",false);
+        createBoard("enemy-board",true);
+
         function sendShot(x,y)
         {
             console.log(`Кликнули по клетке: X=${x},Y=${y}`);
             socket.emit("fire_shot",{x:x,y:y});
         }
         socket.on("shot_response",(data)=>{
-            const cellId = `cell-${data.x}-${data.y}`;
+            const cellId = `enemy-board-cell-${data.x}-${data.y}`;
             const cell= document.getElementById(cellId)
             if(cell)
             {
-                cell.classList.add(data.status);
+                if (data.status==="already_shot")
+                {
+                    alert("Ты сюда уже стрелял!Выбери другую клетку.");
+                }
+                else
+                {
+                    cell.classList.add(data.status);
+                }
+
             }
         });
 

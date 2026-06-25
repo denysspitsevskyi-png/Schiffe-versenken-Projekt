@@ -10,8 +10,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 def index():
     # Сервер будет искать этот файл в папке templates
     return render_template('index.html')
-player_board =\
-[
+player_board =[
     [0,0,0,0,0,0,0,0,0,0],
     [0,1,1,1,0,0,0,0,0,0],
     [0,0,0,0,0,0,0,0,0,0],
@@ -30,10 +29,15 @@ def handle_fire_shot(data):
     x = data.get('x')
     y = data.get('y')
     print(f"Сервер получил координаты выстрела: X={data['x']}, Y={data['y']}")
-    if player_board[y][x] == 1:
+    current_value = player_board[y][x]
+    if current_value == 2 or current_value == 3:
+        status = "already_shot"
+    elif current_value == 1:
         status ="hit"
+        player_board[y][x] = 2
     else:
         status = "miss"
+        player_board[y][x] = 3
     # Отправляем ответ обратно клиенту
     emit('shot_response', {'status': status, 'x': x, 'y': y})
 
