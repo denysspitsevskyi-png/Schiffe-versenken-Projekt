@@ -25,9 +25,11 @@
         /*Ниже мы делаем сетку 10 на 10 и отступами клеточек друг от друга 2*/
         .grid {
             display: grid;
-            grid-template-columns: repeat(10,40px);
-            grid-template-rows: repeat(10,40px);
+            grid-template-columns: 30px repeat(10,40px);
+            grid-template-rows: 30px repeat(10,40px);
             gap: 2px;
+            align-items: center;
+            justify-content: center;
 
         }
         /*Добавляю стиль клеточки*/
@@ -37,6 +39,11 @@
             background-color: #ADD8E6 /*#e0f7fa*/;
             border: 1px solid #b2ebf2; /*тонкая рамка вокруг клетки */
             cursor: pointer; /*курсор превращается в палец при наведении */
+        }
+        .cell.ship
+        {
+            background-color: #78909c;
+            border-color: #546e7a;
         }
         .cell.miss
         {
@@ -70,14 +77,28 @@
     <script>
         // Инициализируем сетевое соединение с сервером
         const socket = io();
+        const letters = ["A","B","C","D","E","F","G","H","I","J"];
         // Функция, которая умеет строить сетку внутри любого контейнера
     // boardId — это ID ящика ("my-board" или "enemy-board")
     // isEnemy — true (если это поле врага, по которому можно кликать) или false
         function createBoard(boardId,isEnemy)
         {
             const board = document.getElementById(boardId);
+            //Создаем пустой левый верхний уголок на пересечении осей
+            const corner = document.createElement("div");
+            board.appendChild(corner);
+            //Циклом выводим буквы A-J над столбцами
+            for(let i = 0; i < 10; i++)
+            {
+                const label=document.createElement("div");
+                label.innerText=letters[i];
+                board.appendChild(label);
+            }
             for(let y = 0; y <10 ; y++)
             {
+                const numLabel = document.createElement("div");
+                numLabel.innerText= y + 1;
+                board.appendChild(numLabel);
                 for(let x = 0; x < 10 ; x++)
                 {
                     const cell = document.createElement("div");
@@ -85,7 +106,7 @@
                     // Чтобы ID клеток не пересекались, добавим приставку поля:
                     // Например: "my-cell-5-3" или "enemy-cell-5-3"
                     cell.id = `${boardId}-cell-${x}-${y}`;
-                    cell.innerText = `${x},${y}`;
+                    //cell.innerText = `${x},${y}`;
                     // Кликать разрешаем ТОЛЬКО на поле врага!
                     if(isEnemy)
                     {
@@ -97,8 +118,35 @@
                 }
             }
         }
+        //Создаем оба поля
         createBoard("my-board",false);
         createBoard("enemy-board",true);
+        socket.on("connect",()=> {
+            console.log("Успешно подключились к серверу!Запрашиваю корабли...");
+            socket.emit("request_my_ships");
+        });
+        //Слушаем ответ от сервера с матрицей наших кораблей
+        socket.on("my_ships_response",(data)=> {
+            console.log("Получаем координаты моих кораблей:",data.board);
+            const boardMatrix=data.board;
+            //Пробегаем по всей матрице 10х10
+            for(let y = 0; y <10 ; y++)
+            {
+                for(let x = 0; x < 10 ; x++)
+                {
+                    //Если в матрице стоит 1 - это корабрь
+                    if(boardMatrix[y][x]===1)
+                    {
+                        const cellId = `my-board-cell-${x}-${y}`;
+                        const cell = document.getElementById(cellId);
+                        if(cell)
+                        {
+                            cell.classList.add("ship"); //Красим в серый
+                        }
+                    }
+                }
+            }
+        });
 
         function sendShot(x,y)
         {
@@ -119,6 +167,18 @@
                     cell.classList.add(data.status);
                 }
 
+            }
+        });
+        socket.on("bot_shot",(data)=> {
+            console.log(`Вот выстрелил в ответ: X=${data.x},Y=${data.y}, Статус=${data.status}`);
+            //Ищем клетку на нашем поле
+            const cellId = `my-board-cell-${data.x}-${data.y}`;
+            const cell = document.getElementById(cellId);
+            if(cell)
+            {
+                // Добавляем класс (hit или miss).
+                // Если бот попал в корабль (ship), класс hit перекрасит его в красный!
+                cell.classList.add(data.status);
             }
         });
 
